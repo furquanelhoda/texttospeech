@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قارئ النصوص الاحترافي</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>قارئ النصوص الاحترافي</h1>
+    </header>
+    <main>
+        <section>
+            <h2>إدخال النصوص</h2>
+            <textarea id="textInput" placeholder="أدخل النص هنا..."></textarea>
+            <div>
+                <label for="fileInput">أو قم بتحميل ملف نصي:</label>
+                <input type="file" id="fileInput" accept=".txt, .doc, .docx">
+            </div>
+        </section>
+
+        <section>
+            <h2>خيارات الصوت</h2>
+            <div>
+                <label>
+                    <input type="radio" name="voice" value="male" checked>
+                    صوت رجل (افتراضي)
+                </label>
+                <label>
+                    <input type="radio" name="voice" value="female">
+                    صوت امرأة
+                </label>
+                <label>
+                    <input type="radio" name="voice" value="custom">
+                    صوت مخصص
+                </label>
+                <div id="customVoiceUpload" style="display: none;">
+                    <label for="customVoiceFile">ارفع ملف الصوت المخصص (mp3 أو wav):</label>
+                    <input type="file" id="customVoiceFile" accept=".mp3, .wav">
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>التحكم في النص</h2>
+            <button id="playButton">تشغيل النص</button>
+            <button id="downloadButton">تحميل الصوت كنغمة</button>
+        </section>
+
+        <footer>
+            <p>&copy; 2025 - تطبيق قارئ النصوص الاحترافي</p>
+        </footer>
+    </main>
+
+    <script>
+        // مفتاح API الخاص بـ DeepSeek
+        const apiKey = "sk-db4c3d82c45f4776bfcba8f1476c4208";
+        const apiEndpoint = "https://api.deepseek.com/v1/tts"; // استبدل بعنوان النهاية الفعلي لـ DeepSeek
+
+        // دالة لإرسال النص إلى API
+        async function sendTextToAPI(text, voiceType) {
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        voice: voiceType // إرسال نوع الصوت (ذكر/أنثى/مخصص)
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`خطأ في الاتصال بـ API: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.audio_url; // رابط الصوت الناتج
+            } catch (error) {
+                console.error("حدث خطأ أثناء الاتصال بـ API:", error);
+                alert("حدث خطأ أثناء معالجة النص. الرجاء المحاولة لاحقًا.");
+            }
+        }
+
+        // تشغيل النص
+        document.getElementById('playButton').addEventListener('click', async function () {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('الرجاء إدخال نص أو تحميل ملف.');
+                return;
+            }
+
+            const voice = document.querySelector('input[name="voice"]:checked').value;
+            alert(`سيتم تشغيل النص باستخدام صوت: ${voice}`);
+
+            // إرسال النص إلى API والحصول على رابط الصوت
+            const audioUrl = await sendTextToAPI(text, voice);
+            if (audioUrl) {
+                const audio = new Audio(audioUrl);
+                audio.play(); // تشغيل الصوت مباشرة
+            }
+        });
+
+        // تحميل الصوت
+        document.getElementById('downloadButton').addEventListener('click', async function () {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('الرجاء إدخال نص أو تحميل ملف.');
+                return;
+            }
+
+            const voice = document.querySelector('input[name="voice"]:checked').value;
+
+            // إرسال النص إلى API والحصول على رابط الصوت
+            const audioUrl = await sendTextToAPI(text, voice);
+            if (audioUrl) {
+                const link = document.createElement('a');
+                link.href = audioUrl;
+                link.download = "converted_audio.mp3"; // اسم ملف التحميل
+                link.click();
+            }
+        });
+
+        // تحميل ملف نصي وعرضه
+        document.getElementById('fileInput').addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('textInput').value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // التحكم في عرض قسم الصوت المخصص
+        document.querySelector('input[name="voice"][value="custom"]').addEventListener('change', function () {
+            document.getElementById('customVoiceUpload').style.display = 'block';
+        });
+
+        document.querySelectorAll('input[name="voice"]:not([value="custom"])').forEach(input => {
+            input.addEventListener('change', function () {
+                document.getElementById('customVoiceUpload').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
